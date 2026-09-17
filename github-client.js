@@ -152,17 +152,23 @@ async function getJobLogs(owner, repo, jobId, token, progressCb) {
       return text;
     }
 
-    // ── Attempt 2: Range directly to CDN URL (r1.url is the redirected CDN URL) ─
-    const cdnUrl = r1.url;
-    progressCb?.(`Log ${totalMB} MB — Range via redirect not honored, trying CDN URL directly…`);
+    // ── Attempt 2: Prefix Range directly to CDN URL ───────────────────────────────
+    // Suffix range (bytes=-N) is not supported by GitHub's CDN.
+    // Use explicit prefix range (bytes=START-) computed from the known file size.
+    const cdnUrl    = r1.url;
+    const rangeStart = cl1 > LOG_MAX_BYTES ? cl1 - LOG_MAX_BYTES : 0;
+    const rangeHeader = `bytes=${rangeStart}-`;
+    progressCb?.(`Log ${totalMB} MB — trying prefix Range (${rangeHeader}) on CDN…`);
     try { r1.body?.cancel(); } catch {}
 
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), 45_000);
     let r2 = null;
     try {
-      r2 = await fetch(cdnUrl, { headers: { 'Range': `bytes=-${LOG_MAX_BYTES}` }, signal: ac.signal });
+      r2 = await fetch(cdnUrl, { headers: { 'Range': rangeHeader }, signal: ac.signal });
       clearTimeout(timer);
+      // Diagnostic — visible in the Live Activity Log
+      progressCb?.(`CDN Range response — status: ${r2.status} | content-range: ${r2.headers.get('content-range') || 'none'} | content-length: ${r2.headers.get('content-length') || 'none'} | requested: ${rangeHeader}`);
     } catch (e) {
       clearTimeout(timer);
       progressCb?.(`CDN Range failed (${e.name === 'AbortError' ? 'timeout 45s' : (e.message||'').substring(0,40)}) — streaming full log…`);
