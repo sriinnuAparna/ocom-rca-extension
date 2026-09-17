@@ -102,6 +102,9 @@ const STAGE_DEFS = [
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 window.addEventListener('load', async () => {
+  // Clean up expired log cache entries silently at startup
+  LogCache.cleanup().then(n => { if (n > 0) console.log(`LogCache: removed ${n} expired entries`); });
+
   // Wire static buttons
   document.getElementById('btn-export-json')?.addEventListener('click', () => exportAs('json'));
   document.getElementById('btn-export-md')?.addEventListener('click',   () => exportAs('markdown'));
@@ -394,11 +397,9 @@ async function runAnalysis(runUrl, token, checkpoint) {
         return [];
       }),
 
-    // ── Logs (all target jobs downloaded simultaneously) ──────────────────────
+    // ── Logs (cache-first, then parallel download for misses) ────────────────
     Promise.all(
-      targetJobs.map(job => {
-        // Use the prefix before "/" to distinguish "ReRun" from "Run-Integration"
-        // e.g. "ReRun-FailedIntegrationTests / maven-tests" → "ReRun"
+      targetJobs.map(async job => {
         const prefix = job.name.includes('/')
           ? job.name.split('/')[0].trim()
               .replace(/FailedIntegrationTests?/i, '')
@@ -406,20 +407,32 @@ async function runAnalysis(runUrl, token, checkpoint) {
               .replace(/-+$/, '') || job.name.split('/')[0].trim()
           : job.name;
         const label = prefix.substring(0, 18);
-        log(`  [${label}] Starting log fetch (id ${job.id})…`, 'dim');
-        return getJobLogs(owner, repo, job.id, token,
-          msg => log(`  [${label}] ${msg}`, 'dim'))
-          .then(text => ({ id: job.id, name: job.name, label, text }));
+
+        // Cache hit — no download needed
+        const cached = await LogCache.get(runIdStr, job.id);
+        if (cached) {
+          const sizeMb = (cached.length / 1024 / 1024).toFixed(1);
+          const daysLeft = Math.ceil((/* expiresAt unknown here, just show */ 30));
+          log(`  [${label}] ✓ Log loaded from cache (${sizeMb} MB) — no download needed`, 'ok');
+          return { id: job.id, name: job.name, label, text: cached };
+        }
+
+        // Cache miss — download and save
+        log(`  [${label}] Not in cache — downloading…`, 'dim');
+        const text = await getJobLogs(owner, repo, job.id, token,
+          msg => log(`  [${label}] ${msg}`, 'dim'));
+        if (text) {
+          await LogCache.set(runIdStr, job.id, text);
+          const sizeMb = (text.length / 1024 / 1024).toFixed(1);
+          const truncated = text.includes('[... log truncated');
+          log(`  [${label}] ✓ ${sizeMb} MB ready${truncated ? ' (last 10 MB)' : ''} — saved to cache (30 days)`,
+              truncated ? 'warn' : 'ok');
+        }
+        return { id: job.id, name: job.name, label, text: text || '' };
       })
     ).then(results => {
       const logs = {};
-      for (const { id, label, text } of results) {
-        logs[id] = text;
-        const sizeMb   = (text.length / 1024 / 1024).toFixed(1);
-        const truncated = text.includes('[... log truncated');
-        log(`  [${label}] ✓ ${sizeMb} MB ready${truncated ? ' (last 10 MB)' : ''}`,
-            truncated ? 'warn' : text.length ? 'ok' : 'warn');
-      }
+      for (const { id, text } of results) logs[id] = text;
       setStage('logs', 'ok', `${Object.values(logs).filter(Boolean).length} fetched`);
       return logs;
     }),
