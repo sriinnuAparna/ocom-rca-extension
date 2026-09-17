@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>OCOM RCA Analyzer</title>
+<link rel="stylesheet" href="results.css">
+</head>
+<body>
+<header>
+  <div class="header-inner">
+    <div class="logo">
+      <span class="logo-icon">⚙</span>
+      <div>
+        <div class="logo-title">OCOM RCA Analyzer</div>
+        <div class="logo-sub">API Automation Failure Root Cause Analysis</div>
+      </div>
+    </div>
+    <div id="run-link"></div>
+  </div>
+</header>
+
+<main>
+  <!-- Resume banner (shown when saved checkpoint found) -->
+  <div id="resume-banner" class="resume-banner hidden">
+    <span class="resume-icon">💾</span>
+    <div class="resume-text">
+      <strong>Saved checkpoint found</strong>
+      <span id="resume-desc"></span>
+    </div>
+    <button id="btn-resume-saved" class="resume-btn-primary">▶ Resume from checkpoint</button>
+    <button id="btn-restart-fresh" class="resume-btn-secondary">↺ Start fresh</button>
+  </div>
+
+  <!-- Progress card -->
+  <section id="progress-card" class="card">
+    <div class="progress-card-hdr">
+      <h2>Analysis Progress</h2>
+      <div class="progress-controls">
+        <span id="progress-scenario-count" class="progress-counter"></span>
+        <button id="btn-pause-resume" class="pause-btn hidden">⏸ Pause</button>
+      </div>
+    </div>
+    <div id="progress-grid" class="progress-grid"></div>
+    <div id="progress-error" class="err-msg" style="display:none"></div>
+
+    <!-- Live activity log -->
+    <div class="log-panel" id="log-panel">
+      <div class="log-toolbar">
+        <span class="log-title">📡 Live Activity Log</span>
+        <div class="log-toolbar-right">
+          <span id="log-count" class="log-count">0 events</span>
+          <button id="btn-toggle-log" class="log-ctrl-btn">Hide</button>
+          <button id="btn-clear-log" class="log-ctrl-btn">Clear</button>
+        </div>
+      </div>
+      <div class="log-body" id="log-body">
+        <div class="log-empty">Waiting for analysis to start…</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Summary card (hidden until done) -->
+  <section id="summary-card" class="card hidden">
+    <div id="run-meta"></div>
+    <div id="tiles" class="tiles"></div>
+    <div class="export-row">
+      <button id="btn-export-json">Export JSON</button>
+      <button id="btn-export-md">Export Markdown</button>
+      <button id="btn-export-html">Export HTML</button>
+    </div>
+  </section>
+
+  <!-- Failure table -->
+  <section id="table-card" class="card hidden">
+    <h2>Failed Scenarios <span id="fail-count" class="badge-num"></span></h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>#</th><th>Feature</th><th>Scenario</th><th>API</th><th>Module</th><th>Env</th><th>Classification</th><th>Confidence</th></tr>
+        </thead>
+        <tbody id="fail-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Detail panel -->
+  <section id="detail-card" class="card hidden">
+    <div class="detail-hdr">
+      <button class="back-btn" id="btn-back">← Back to list</button>
+      <h2 id="detail-title"></h2>
+    </div>
+    <div id="detail-body"></div>
+  </section>
+</main>
+
+<script src="github-client.js"></script>
+<script src="config.js"></script>
+<script src="parsers.js"></script>
+<script src="analyzer.js"></script>
+<script src="results.js"></script>
+</body>
+</html>

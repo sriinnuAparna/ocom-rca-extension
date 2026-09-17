@@ -1,0 +1,42 @@
+{
+  "manifest_version": 3,
+  "name": "OCOM RCA Analyzer",
+  "version": "1.0.0",
+  "description": "Evidence-based RCA for OCOM API Automation GitHub Actions failures",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "OCOM RCA Analyzer",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16":  "icons/icon16.png",
+    "48":  "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "permissions": [
+    "storage",
+    "tabs",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://api.github.com/*",
+    "https://*.githubusercontent.com/*",
+    "https://*.actions.githubusercontent.com/*",
+    "https://ocom.*.westus.aks.az.albertsons.com/*"
+  ],
+  "options_page": "options.html",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://github.com/*/actions/runs/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
