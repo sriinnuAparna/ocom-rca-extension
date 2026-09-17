@@ -1,4 +1,5 @@
 'use strict';
+
 // ── Module → AKS actuator path ────────────────────────────────────────────────
 const MODULE_ACTUATOR_PATH = {
   'ocom-web-idgenerator':    'web-idgenerator',
